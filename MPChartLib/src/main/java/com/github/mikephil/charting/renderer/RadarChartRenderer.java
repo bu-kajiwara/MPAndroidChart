@@ -4,6 +4,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 
 import com.github.mikephil.charting.animation.ChartAnimator;
@@ -82,65 +83,50 @@ public class RadarChartRenderer extends LineRadarRenderer {
         float phaseX = mAnimator.getPhaseX();
         float phaseY = mAnimator.getPhaseY();
 
-        float sliceangle = mChart.getSliceAngle();
-
-        // calculate the factor that is needed for transforming the value to
-        // pixels
-        float factor = mChart.getFactor();
-
+        float sliceAngle = mChart.getSliceAngle();
         MPPointF center = mChart.getCenterOffsets();
-        MPPointF pOut = MPPointF.getInstance(0,0);
-        Path surface = mDrawDataSetSurfacePathBuffer;
-        surface.reset();
-
-        boolean hasMovedToPoint = false;
-
-        for (int j = 0; j < dataSet.getEntryCount(); j++) {
-
-            mRenderPaint.setColor(dataSet.getColor(j));
-
-            RadarEntry e = dataSet.getEntryForIndex(j);
-
-            Utils.getPosition(
-                    center,
-                    (e.getY() - mChart.getYChartMin()) * factor * phaseY,
-                    sliceangle * j * phaseX + mChart.getRotationAngle(), pOut);
-
-            if (Float.isNaN(pOut.x))
-                continue;
-
-            if (!hasMovedToPoint) {
-                surface.moveTo(pOut.x, pOut.y);
-                hasMovedToPoint = true;
-            } else
-                surface.lineTo(pOut.x, pOut.y);
-        }
-
-        if (dataSet.getEntryCount() > mostEntries) {
-            // if this is not the largest set, draw a line to the center before closing
-            surface.lineTo(center.x, center.y);
-        }
-
-        surface.close();
-
-        if (dataSet.isDrawFilledEnabled()) {
-
-            final Drawable drawable = dataSet.getFillDrawable();
-            if (drawable != null) {
-
-                drawFilledPath(c, surface, drawable);
-            } else {
-
-                drawFilledPath(c, surface, dataSet.getFillColor(), dataSet.getFillAlpha());
-            }
-        }
+        MPPointF pOut = MPPointF.getInstance(0, 0);
 
         mRenderPaint.setStrokeWidth(dataSet.getLineWidth());
         mRenderPaint.setStyle(Paint.Style.STROKE);
 
-        // draw the line (only if filled is disabled or alpha is below 255)
-        if (!dataSet.isDrawFilledEnabled() || dataSet.getFillAlpha() < 255)
-            c.drawPath(surface, mRenderPaint);
+        Path p = mDrawDataSetSurfacePathBuffer;
+        p.reset();
+
+        RectF content = mViewPortHandler.getContentRect();
+        float contentSize = Math.min(content.width() / 2f, content.height() / 2f);
+        float contentSizePerEntry = contentSize / 5;
+
+        for (int j = 0; j < dataSet.getEntryCount(); j++) {
+            RadarEntry entry = dataSet.getEntryForIndex(j);
+            float entryValue = Math.min(Math.max(entry.getY(), entry.getMin()), entry.getMax());
+            float targetValue = Math.min(Math.max(entry.getTargetValue(), entry.getMin()), entry.getMax());
+
+            if (entryValue <= targetValue) {
+                Utils.getPosition(
+                        center,
+                        (contentSizePerEntry * 2) * ((entryValue - entry.getMin()) / (targetValue - entry.getMin())) + contentSizePerEntry,
+                        sliceAngle * j + mChart.getRotationAngle(),
+                        pOut);
+            } else {
+                Utils.getPosition(
+                        center,
+                        (contentSizePerEntry * 2) * ((entryValue - targetValue) / (entry.getMax() - targetValue)) + contentSizePerEntry * 3,
+                        sliceAngle * j + mChart.getRotationAngle(),
+                        pOut);
+            }
+
+            mRenderPaint.setColor(dataSet.getColor(j));
+
+            if (j == 0)
+                p.moveTo(pOut.x, pOut.y);
+            else
+                p.lineTo(pOut.x, pOut.y);
+        }
+
+        p.close();
+
+        c.drawPath(p, mRenderPaint);
 
         MPPointF.recycleInstance(center);
         MPPointF.recycleInstance(pOut);
@@ -152,16 +138,18 @@ public class RadarChartRenderer extends LineRadarRenderer {
         float phaseX = mAnimator.getPhaseX();
         float phaseY = mAnimator.getPhaseY();
 
-        float sliceangle = mChart.getSliceAngle();
+        float sliceAngle = mChart.getSliceAngle();
 
         // calculate the factor that is needed for transforming the value to
         // pixels
         float factor = mChart.getFactor();
 
         MPPointF center = mChart.getCenterOffsets();
-        MPPointF pOut = MPPointF.getInstance(0,0);
-        MPPointF pIcon = MPPointF.getInstance(0,0);
-
+        MPPointF pOut = MPPointF.getInstance(0, 0);
+        MPPointF pIcon = MPPointF.getInstance(0, 0);
+        RectF content = mViewPortHandler.getContentRect();
+        float contentSize = Math.min(content.width() / 2f, content.height() / 2f);
+        float contentSizePerEntry = contentSize / 5;
         float yoffset = Utils.convertDpToPixel(5f);
 
         for (int i = 0; i < mChart.getData().getDataSetCount(); i++) {
@@ -183,12 +171,22 @@ public class RadarChartRenderer extends LineRadarRenderer {
             for (int j = 0; j < dataSet.getEntryCount(); j++) {
 
                 RadarEntry entry = dataSet.getEntryForIndex(j);
+                float entryValue = Math.min(Math.max(entry.getY(), entry.getMin()), entry.getMax());
+                float targetValue = Math.min(Math.max(entry.getTargetValue(), entry.getMin()), entry.getMax());
 
-                 Utils.getPosition(
-                         center,
-                         (entry.getY() - mChart.getYChartMin()) * factor * phaseY,
-                         sliceangle * j * phaseX + mChart.getRotationAngle(),
-                         pOut);
+                if (entryValue <= targetValue) {
+                    Utils.getPosition(
+                            center,
+                            (contentSizePerEntry * 2) * ((entryValue - entry.getMin()) / (targetValue - entry.getMin())) + contentSizePerEntry,
+                            sliceAngle * j + mChart.getRotationAngle(),
+                            pOut);
+                } else {
+                    Utils.getPosition(
+                            center,
+                            (contentSizePerEntry * 2) * ((entryValue - targetValue) / (entry.getMax() - targetValue)) + contentSizePerEntry * 3,
+                            sliceAngle * j + mChart.getRotationAngle(),
+                            pOut);
+                }
 
                 if (dataSet.isDrawValuesEnabled()) {
                     drawValue(c, formatter.getRadarLabel(entry), pOut.x, pOut.y - yoffset, dataSet.getValueTextColor(j));
@@ -200,8 +198,8 @@ public class RadarChartRenderer extends LineRadarRenderer {
 
                     Utils.getPosition(
                             center,
-                            (entry.getY()) * factor * phaseY + iconsOffset.y,
-                            sliceangle * j * phaseX + mChart.getRotationAngle(),
+                            (entry.getY()) * factor + iconsOffset.y,
+                            sliceAngle * j + mChart.getRotationAngle(),
                             pIcon);
 
                     //noinspection SuspiciousNameCombination

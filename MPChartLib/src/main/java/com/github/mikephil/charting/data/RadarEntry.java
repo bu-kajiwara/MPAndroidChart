@@ -7,6 +7,9 @@ import android.annotation.SuppressLint;
  */
 @SuppressLint("ParcelCreator")
 public class RadarEntry extends Entry {
+    private float min;
+    private float max;
+    private float targetValue;
 
     public RadarEntry(float value) {
         super(0f, value);
@@ -40,5 +43,29 @@ public class RadarEntry extends Entry {
     @Override
     public float getX() {
         return super.getX();
+    }
+
+    public float getMin() {
+        return min;
+    }
+
+    public float getMax() {
+        return max;
+    }
+
+    public void setMin(float min) {
+        this.min = min;
+    }
+
+    public void setMax(float max) {
+        this.max = max;
+    }
+
+    public float getTargetValue() {
+        return targetValue;
+    }
+
+    public void setTargetValue(float targetValue) {
+        this.targetValue = targetValue;
     }
 }
