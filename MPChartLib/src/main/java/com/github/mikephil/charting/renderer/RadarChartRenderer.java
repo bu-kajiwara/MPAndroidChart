@@ -99,23 +99,12 @@ public class RadarChartRenderer extends LineRadarRenderer {
 
         for (int j = 0; j < dataSet.getEntryCount(); j++) {
             RadarEntry entry = dataSet.getEntryForIndex(j);
-            float entryValue = Math.min(Math.max(entry.getY(), entry.getMin()), entry.getMax());
-            float targetValue = Math.min(Math.max(entry.getTargetValue(), entry.getMin()), entry.getMax());
-
-            if (entryValue <= targetValue) {
-                Utils.getPosition(
-                        center,
-                        (contentSizePerEntry * 2) * ((entryValue - entry.getMin()) / (targetValue - entry.getMin())) + contentSizePerEntry,
-                        sliceAngle * j + mChart.getRotationAngle(),
-                        pOut);
-            } else {
-                Utils.getPosition(
-                        center,
-                        (contentSizePerEntry * 2) * ((entryValue - targetValue) / (entry.getMax() - targetValue)) + contentSizePerEntry * 3,
-                        sliceAngle * j + mChart.getRotationAngle(),
-                        pOut);
-            }
-
+            Utils.getPosition(
+                center,
+                calculateDistance(entry, contentSizePerEntry),
+                sliceAngle * j + mChart.getRotationAngle(),
+                pOut
+            );
             mRenderPaint.setColor(dataSet.getColor(j));
 
             if (j == 0)
@@ -171,25 +160,21 @@ public class RadarChartRenderer extends LineRadarRenderer {
             for (int j = 0; j < dataSet.getEntryCount(); j++) {
 
                 RadarEntry entry = dataSet.getEntryForIndex(j);
-                float entryValue = Math.min(Math.max(entry.getY(), entry.getMin()), entry.getMax());
-                float targetValue = Math.min(Math.max(entry.getTargetValue(), entry.getMin()), entry.getMax());
-
-                if (entryValue <= targetValue) {
-                    Utils.getPosition(
-                            center,
-                            (contentSizePerEntry * 2) * ((entryValue - entry.getMin()) / (targetValue - entry.getMin())) + contentSizePerEntry,
-                            sliceAngle * j + mChart.getRotationAngle(),
-                            pOut);
-                } else {
-                    Utils.getPosition(
-                            center,
-                            (contentSizePerEntry * 2) * ((entryValue - targetValue) / (entry.getMax() - targetValue)) + contentSizePerEntry * 3,
-                            sliceAngle * j + mChart.getRotationAngle(),
-                            pOut);
-                }
+                Utils.getPosition(
+                    center,
+                    calculateDistance(entry, contentSizePerEntry),
+                    sliceAngle * j + mChart.getRotationAngle(),
+                    pOut
+                );
 
                 if (dataSet.isDrawValuesEnabled()) {
-                    drawValue(c, formatter.getRadarLabel(entry), pOut.x, pOut.y - yoffset, dataSet.getValueTextColor(j));
+                    drawValue(
+                        c,
+                        formatter.getRadarLabel(entry),
+                        pOut.x,
+                        pOut.y - yoffset,
+                        dataSet.getValueTextColor(j)
+                    );
                 }
 
                 if (entry.getIcon() != null && dataSet.isDrawIconsEnabled()) {
@@ -221,6 +206,23 @@ public class RadarChartRenderer extends LineRadarRenderer {
         MPPointF.recycleInstance(center);
         MPPointF.recycleInstance(pOut);
         MPPointF.recycleInstance(pIcon);
+    }
+
+    private float calculateDistance(RadarEntry entry, float contentSizePerEntry) {
+        float entryValue = calculateEntryValue(entry.getY(), entry.getMin(), entry.getMax());
+        float targetValue =
+            calculateEntryValue(entry.getTargetValue(), entry.getMin(), entry.getMax());
+
+        if (entryValue <= targetValue) {
+            return (contentSizePerEntry * 2) * ((entryValue - entry.getMin()) /
+                (targetValue - entry.getMin())) + contentSizePerEntry;
+        }
+        return (contentSizePerEntry * 2) * ((entryValue - targetValue) /
+            (entry.getMax() - targetValue)) + contentSizePerEntry * 3;
+    }
+
+    private float calculateEntryValue(float value, float min, float max) {
+        return Math.min(Math.max(value, min), max);
     }
 
     @Override
