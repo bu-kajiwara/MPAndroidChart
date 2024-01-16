@@ -558,6 +558,14 @@ public class Legend extends ComponentBase {
         mStackSpace = space;
     }
 
+    public void setShape(LegendForm shape) {
+        mShape = shape;
+    }
+
+    public LegendForm getShape() {
+        return mShape;
+    }
+
     /**
      * the total width of the legend (needed width space)
      */
